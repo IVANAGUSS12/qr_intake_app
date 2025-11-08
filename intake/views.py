@@ -38,8 +38,9 @@ class IntakeView(View):
                 notes=form.cleaned_data.get("notes") or "",
             )
 
-            for f in form.cleaned_data.get("files", []):
-                Attachment.objects.create(study_request=req, file=f)
+            for f in request.FILES.getlist("files"):
+ 		   Attachment.objects.create(study_request=req, file=f)
+
 
             return redirect("panel")
         return render(request, self.template_name, {"form": form})
