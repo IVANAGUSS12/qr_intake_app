@@ -1,1 +1,1 @@
-web: gunicorn qr_intake.wsgi --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120 --keep-alive 5 --max-requests 300 --max-requests-jitter 50
+web: gunicorn qr_intake.wsgi:application --workers=1 --threads=2 --timeout=120 --graceful-timeout=30 --max-requests=200 --max-requests-jitter=50 --log-level=info
