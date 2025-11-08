@@ -1,9 +1,10 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.views import View
-from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db import transaction
+
 from .forms import IntakeForm
-from .models import Patient, StudyRequest, Attachment, Doctor, Service
+from .models import StudyRequest, Attachment, Service
+
 
 class IntakeView(View):
     template_name = "intake/intake_form.html"
@@ -12,79 +13,48 @@ class IntakeView(View):
         form = IntakeForm()
         return render(request, self.template_name, {"form": form})
 
+    @transaction.atomic
     def post(self, request):
         form = IntakeForm(request.POST, request.FILES)
-        if form.is_valid():
-            dni = form.cleaned_data["dni"]
-            p, _ = Patient.objects.get_or_create(
-                dni=dni,
-                defaults={
-                    "last_name": form.cleaned_data["last_name"].strip().upper(),
-                    "first_name": form.cleaned_data["first_name"].strip().upper(),
-                    "email": form.cleaned_data.get("email"),
-                    "phone": form.cleaned_data.get("phone"),
-                },
-            )
-            p.last_name = form.cleaned_data["last_name"].strip().upper()
-            p.first_name = form.cleaned_data["first_name"].strip().upper()
-            p.email = form.cleaned_data.get("email")
-            p.phone = form.cleaned_data.get("phone")
-            p.save()
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form})
 
-            req = StudyRequest.objects.create(
-                patient=p,
-                doctor=form.cleaned_data.get("doctor"),
-                service=form.cleaned_data.get("service"),
-                notes=form.cleaned_data.get("notes") or "",
-            )
+        # Crear la solicitud de estudio
+        req = StudyRequest.objects.create(
+            dni=form.cleaned_data["dni"],
+            last_name=form.cleaned_data["last_name"],
+            first_name=form.cleaned_data["first_name"],
+            email=form.cleaned_data.get("email") or "",
+            phone=form.cleaned_data.get("phone") or "",
+            doctor=form.cleaned_data.get("doctor"),
+            service=form.cleaned_data.get("service"),
+            notes=form.cleaned_data.get("notes") or "",
+        )
 
-            for f in request.FILES.getlist("files"):
- 		   Attachment.objects.create(study_request=req, file=f)
+        # Guardar adjuntos (múltiples)
+        for f in request.FILES.getlist("files"):
+            Attachment.objects.create(study_request=req, file=f)
 
+        # Redirigir al panel (o podrías renderizar un "gracias")
+        return redirect("panel")
 
-            return redirect("panel")
-        return render(request, self.template_name, {"form": form})
 
 class PanelView(View):
     template_name = "intake/panel.html"
 
-    def get_queryset(self, request, service_slug=None):
-        q = request.GET.get("q", "").strip()
-        doctor_id = request.GET.get("doctor")
-        queryset = StudyRequest.objects.select_related("patient","doctor","service").order_by("-id")
-        if q:
-            queryset = queryset.filter(
-                Q(patient__dni__icontains=q) |
-                Q(patient__last_name__icontains=q) |
-                Q(patient__first_name__icontains=q)
-            )
-        if doctor_id:
-            queryset = queryset.filter(doctor_id=doctor_id)
-        service_obj = None
-        if service_slug:
-            service_obj = get_object_or_404(Service, slug=service_slug)
-            queryset = queryset.filter(service=service_obj)
-        return queryset, q, doctor_id, service_obj
-
     def get(self, request, service_slug=None):
-        queryset, q, doctor_id, service_obj = self.get_queryset(request, service_slug)
+        services = Service.objects.order_by("name")
+        qs = StudyRequest.objects.select_related("service", "doctor").order_by("-created_at")
+        selected_service = None
 
-        counts = (StudyRequest.objects
-                  .values("service__id", "service__name", "service__slug")
-                  .annotate(total=Count("id"))
-                  .order_by("service__name"))
-        services = Service.objects.all().order_by("name")
+        if service_slug:
+            selected_service = Service.objects.filter(slug=service_slug).first()
+            if selected_service:
+                qs = qs.filter(service=selected_service)
 
-        paginator = Paginator(queryset, 20)
-        page = request.GET.get("page", 1)
-        page_obj = paginator.get_page(page)
-        context = {
-            "page_obj": page_obj,
-            "q": q,
-            "doctors": Doctor.objects.all().order_by("full_name"),
-            "doctor_selected": doctor_id or "",
+        ctx = {
             "services": services,
-            "service_current": service_obj,
-            "service_counts": {c["service__slug"] or "": c["total"] for c in counts},
+            "requests": qs,
+            "selected_service": selected_service,
         }
-        return render(request, self.template_name, context)
+        return render(request, self.template_name, ctx)
