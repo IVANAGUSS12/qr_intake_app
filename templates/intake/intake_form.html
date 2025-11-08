@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingreso por QR</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:0;padding:2rem;background:#f8f9fb}
+    .card{max-width:760px;margin:0 auto;background:white;border-radius:12px;padding:2rem;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+    h1{margin-top:0;font-size:1.4rem}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .row-full{display:block}
+    label{display:block;font-size:.9rem;margin:.5rem 0 .25rem}
+    input,select,textarea{width:100%;padding:.65rem;border:1px solid #dcdfe6;border-radius:8px}
+    button{margin-top:1rem;padding:.75rem 1.2rem;border:0;border-radius:10px;cursor:pointer}
+    .primary{background:#111827;color:white}
+    .muted{background:#e5e7eb}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Ingreso por QR</h1>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row">
+        <div>
+          <label for="id_dni">DNI</label>
+          {{ form.dni }}
+        </div>
+        <div>
+          <label for="id_email">Correo</label>
+          {{ form.email }}
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="id_last_name">Apellido</label>
+          {{ form.last_name }}
+        </div>
+        <div>
+          <label for="id_first_name">Nombre</label>
+          {{ form.first_name }}
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="id_phone">Teléfono</label>
+          {{ form.phone }}
+        </div>
+        <div>
+          <label for="id_doctor">Médico solicitante</label>
+          {{ form.doctor }}
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="id_service">Servicio</label>
+          {{ form.service }}
+        </div>
+        <div>
+          <label for="id_files">Archivos</label>
+          {{ form.files }}
+          <small>Máx 5MB por archivo; múltiples permitidos.</small>
+        </div>
+      </div>
+      <div class="row-full">
+        <label for="id_notes">Notas</label>
+        {{ form.notes }}
+      </div>
+      <div>
+        <button class="primary" type="submit">Guardar</button>
+        <a href="/panel/"><button class="muted" type="button">Ir al Panel</button></a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

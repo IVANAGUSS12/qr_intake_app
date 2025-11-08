@@ -1,0 +1,4 @@
+import multiprocessing, os
+bind = "0.0.0.0:" + os.getenv("PORT", "8000")
+workers = max(2, multiprocessing.cpu_count() * 2 + 1)
+timeout = 120

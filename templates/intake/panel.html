@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:0;background:#0b132b;color:#e5e7eb}
+    header{padding:1rem 2rem;background:#111827;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+    input,select{padding:.5rem;border-radius:8px;border:1px solid #374151;background:#111827;color:#e5e7eb}
+    a.button,button{padding:.6rem .9rem;border-radius:8px;border:0;background:#2563eb;color:white;text-decoration:none}
+    main{padding:2rem}
+    table{width:100%;border-collapse:collapse;margin-top:1rem;background:#0f172a}
+    th,td{padding:.6rem;border-bottom:1px solid #1f2937;font-size:.9rem}
+    tr:hover{background:#111827}
+    .pill{padding:.2rem .5rem;border-radius:999px;background:#1f2937}
+    .muted{color:#9ca3af}
+    nav.pages{margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap}
+    nav.pages a{background:#1f2937;padding:.4rem .7rem;border-radius:6px;text-decoration:none;color:#fff}
+    nav.pages .current{background:#2563eb}
+    .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 2rem 0 2rem;background:#0b132b;padding:1rem 0}
+    .tabs a{padding:.45rem .8rem;border-radius:20px;background:#1f2937;color:#fff;text-decoration:none;border:1px solid #2b3443}
+    .tabs a.active{background:#2563eb;border-color:#2563eb}
+    .kpis{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+    .kpi{background:#0f172a;border:1px solid #1f2937;border-radius:12px;padding:1rem 1.2rem;min-width:160px}
+  </style>
+</head>
+<body>
+<header>
+  <form method="get" action="">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar DNI/Apellido/Nombre">
+    <select name="doctor">
+      <option value="">Médico</option>
+      {% for d in doctors %}
+        <option value="{{ d.id }}" {% if doctor_selected|add:'' == d.id|add:'' %}selected{% endif %}>{{ d.full_name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filtrar</button>
+    <a class="button" href="/qr/intake/">+ Nuevo ingreso</a>
+  </form>
+</header>
+
+<div class="tabs">
+  <a href="/panel/" class="{% if not service_current %}active{% endif %}">Todos
+    {% if service_counts.get('') %}<span class="pill">{{ service_counts.get('') }}</span>{% endif %}
+  </a>
+  {% for s in services %}
+    {% with slug=s.slug|default_if_none:"" %}
+    <a href="/panel/{{ slug }}/" class="{% if service_current and service_current.id == s.id %}active{% endif %}">
+      {{ s.name }}
+      {% if service_counts.get(slug) %}<span class="pill">{{ service_counts.get(slug) }}</span>{% endif %}
+    </a>
+    {% endwith %}
+  {% endfor %}
+</div>
+
+<main>
+  <div class="kpis">
+    <div class="kpi">
+      <div class="muted">Registros</div>
+      <div style="font-size:1.6rem;font-weight:700">{{ page_obj.paginator.count }}</div>
+    </div>
+    {% if service_current %}
+    <div class="kpi">
+      <div class="muted">Servicio</div>
+      <div style="font-size:1.1rem">{{ service_current.name }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>DNI</th>
+        <th>Paciente</th>
+        <th>Médico</th>
+        <th>Servicio</th>
+        <th>Adjuntos</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in page_obj.object_list %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td class="muted">{{ r.created_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ r.patient.dni }}</td>
+        <td>{{ r.patient.last_name }}, {{ r.patient.first_name }}</td>
+        <td>{{ r.doctor.full_name if r.doctor }}</td>
+        <td><span class="pill">{{ r.service.name if r.service }}</span></td>
+        <td>
+          {% for a in r.attachments.all %}
+            <a href="{{ a.file.url }}" target="_blank">archivo{{ forloop.counter }}</a>{% if not forloop.last %}, {% endif %}
+          {% empty %}—
+          {% endfor %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">Sin resultados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <nav class="pages">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&doctor={{ doctor_selected }}">« Prev</a>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&doctor={{ doctor_selected }}">Next »</a>
+    {% endif %}
+  </nav>
+</main>
+</body>
+</html>
